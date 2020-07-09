@@ -24,9 +24,9 @@ module.exports = {
       timeoutBlocks: 200
     },
     matic: {
-      provider: () => new HDWalletProvider(mnemonic, `https://rpc-mumbai.matic.today`),
+      provider: () => new HDWalletProvider(mnemonic, `https://rpc-mumbai.matic.today`, 4),
       network_id: 80001,
-      gasPrice: '0x0',
+      // gasPrice: '0x0',
       confirmations: 2,
       timeoutBlocks: 200,
       skipDryRun: true

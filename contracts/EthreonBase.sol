@@ -19,17 +19,24 @@ contract Patron {
     // Event flagging a new patron
     event NewPatron();
     // Event for welcome back
-    event WelcomeBackPatron();
+    // event WelcomeBackPatron();
 
     modifier isPatronRegistered () {
         require(alreadyRegisteredPatron[msg.sender], "User not registered!");
         _;
     }
-
+    
+    function isOldPatron () public view returns (bool) {
+        if (alreadyRegisteredPatron[msg.sender]) {
+            return true;
+        }
+        return false;
+    }
+    
     // Function to create a new patron from public address and return success
     function newPatronSignup () public {
         if (alreadyRegisteredPatron[msg.sender]) {
-            emit WelcomeBackPatron();
+            return;
         }
         else {
             alreadyRegisteredPatron[msg.sender] = true;
@@ -69,23 +76,30 @@ contract Creator {
     // Mapping to keep track of new creators
     mapping (address => bool) alreadyRegisteredCreator;
 
-    // Mapping to get data of a creator
-    mapping (address => CreatorDatastore) public CreatorData;
+    // Mapping to store data of a creator
+    mapping (address => CreatorDatastore) CreatorData;
 
     // Event flagging a new creator
     event NewCreator();
     // Event for welcome back
-    event WelcomeBackCreator();
+    // event WelcomeBackCreator();
 
     modifier isCreatorRegistered () {
         require(alreadyRegisteredCreator[msg.sender], "Creator not registered!");
         _;
     }
 
+    function isOldCreator () public view returns (bool) {
+        if (alreadyRegisteredCreator[msg.sender]) {
+            return true;
+        }
+        return false;
+    }
+
     // Function to create a new creator from public address and return success
     function newCreatorSignup () public {
         if (alreadyRegisteredCreator[msg.sender]) {
-            emit WelcomeBackCreator();
+            return;
         }
         else {
             alreadyRegisteredCreator[msg.sender] = true;

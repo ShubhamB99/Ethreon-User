@@ -1,49 +1,11 @@
 App = {
   web3Provider: null,
   contracts: {},
-  
-  initPage: async function() {
-    // Load creators.
-    // Ideally JSON should be auto-populated by a function
-    // var ethreonInstance = await App.contracts.Ethreon.deployed();
-    // var account = await web3.eth.getAccounts();
-    // web3.eth.defaultAccount = account[0];
-    // console.log(web3.eth.defaultAccount);
-    // var creatorCount;
-    // await ethreonInstance.numCreators({from: web3.eth.defaultAccount}).then(result => creatorCount = result.toNumber());
-    // console.log(creatorCount);
-    // var creators = [];
-    // for (var i=0;i<creatorCount;i++) {
-    //   var result = await ethreonInstance.allCreators(i, {from: web3.eth.defaultAccount});
-    //   console.log(result);
-    //   creators[i] = result;
-    // }
-    // console.log(creators);
-    // var creatorData = [];
-    // for (var i=0;i<creatorCount;i++) {
-    //   var result = await ethreonInstance.CreatorData(i, {from: web3.eth.defaultAccount});
-    //   creatorData[i] = result;
-    // }
-    // console.log(creatorData);
-    console.log('Initiating page!');
-    // $.getJSON('../creators.json', function(data) {                  // Get this asap ***********
-    //   var creatorsRow = $('#creatorsRow');
-    //   var creatorTemplate = $('#creatorTemplate');
-    //   console.log(creatorsRow);
-    //   console.log(creatorTemplate);
 
-    //   for (i = 0; i < data.length; i ++) {
-    //     creatorTemplate.find('.panel-title').text(data[i].name);
-    //     creatorTemplate.find('img').attr('src', data[i].picture);
-    //     creatorTemplate.find('.btn-tip').attr('data-id', data[i].id);
-    //     creatorTemplate.find('.btn-subscribe').attr('data-id', data[i].id);
-
-    //     creatorsRow.append(creatorTemplate.html());
-    //   }
-    // });
-
-    return App.initWeb3();
-  },
+  contract: null,
+  web3: null,
+  defaultAccount: null,
+  allCreators: [],
 
   initWeb3: async function() {
 
@@ -67,14 +29,15 @@ App = {
       App.web3Provider = new Web3.providers.HttpProvider('http://localhost:7545');
     }
     web3 = new Web3(App.web3Provider);
-
-    console.log(web3);
+    App.web3 = web3;
+    // console.log('Web3 ', App.web3);
 
     var accounts = await web3.eth.getAccounts();
     web3.eth.defaultAccount = accounts[0];
+    App.defaultAccount = web3.eth.defaultAccount;
+    // console.log('Account', App.defaultAccount);
 
     console.log('Web3 initiated!');
-
     return App.initContract();
   },
 
@@ -88,104 +51,142 @@ App = {
       App.contracts.Ethreon = TruffleContract(EthreonArtifact);
 
       App.contracts.Ethreon.setProvider(App.web3Provider);
-      console.log(App.contracts.Ethreon);
+      console.log('App contracts', App.contracts.Ethreon);
       console.log('Contract set!');
-      console.log('Now registering user');
 
+      return App.initPage();
       // Use our contract to retrieve and mark the subscriptions
-      return App.registerUser();
-
-      // return App.markAdopted();                                             // Do a similar to get mark subscribed
     });
 
     // return App.bindEvents();
   },
 
-  registerUser: async function() {
-    var ethreonInstance = await App.contracts.Ethreon.deployed();
-    var account = await web3.eth.getAccounts();
-    web3.eth.defaultAccount = account[0];
-    var receipt = await ethreonInstance.newPatronSignup({from:web3.eth.defaultAccount});
-    console.log(receipt.logs[0].event);
-    // await App.handleEvents();                       // Give out notification based on event name
-    console.log(receipt.logs[0].event == "WelcomeBackPatron");
+  initPage: async function() {
 
-    var subs = await ethreonInstance.getSubscriptionCount({from: web3.eth.defaultAccount});
+    var contractInstance = await App.contracts.Ethreon.deployed();
+    App.contract = contractInstance;
+    console.log('Web3 instance', App.web3);
+    console.log('Contract instance', App.contract);
+    console.log('Account', App.defaultAccount);
 
-    var addrElem = $('.address');
-    var subsElem = $('.subscriptions');
+    console.log('Initiating page!');
     
-    addrElem.text(addrElem.text().replace('loading...', web3.eth.defaultAccount));
-    subsElem.text(subsElem.text().replace('loading...', subs));
-    
-    // Notification for welcome back/ New user welcome!
-    return App.markSubscribed();
-  },
+    // Load creators.
+    // Ideally JSON should be auto-populated by a function
+    console.log('Getting creators!');
+    var res = await App.contract.numCreators({from: App.defaultAccount});
+    const numCreators = res.words[0];
+    console.log('numCreators', numCreators);
 
-  markSubscribed: async function() {
-    console.log('Subscribe time');
-    var ethreonInstance = await App.contracts.Ethreon.deployed();
-    var account = await web3.eth.getAccounts();
-    web3.eth.defaultAccount = account[0];
-    var logs = await ethreonInstance.getSubscriptions({from:web3.eth.defaultAccount});
-    console.log(logs);
-    
-    // Highlight creators who're subscribed to
+    for (var i=0; i<numCreators; i++) {
+      var acnt = await App.contract.allCreators(i, {from: App.defaultAccount});
+      // console.log(acnt)
+      var img = '', content = '';
+
+      // Get creator data if old patron and subscribed to creator
+      const isOldPatron = await App.contract.isOldPatron({from: App.defaultAccount});
+      if (isOldPatron) {
+        await App.contract.isSubscribedTo(acnt, {from: App.defaultAccount}).then(async function(isSubscribedTo) {
+          console.log('isSubscribedTo ', acnt, ' -> ', isSubscribedTo)
+          if (isSubscribedTo == true) {
+            var resData;
+            resData = await App.contract.getCreatorData(acnt, {from: App.defaultAccount});
+            img = resData[0]
+            content = resData[1]
+            // console.log(img, content)
+          }
+        })
+      }
+
+      var creatorData = {
+        id: null, 
+        name: '', 
+        picture: 'QmaAQmT3hUoWqcj1Q81BiFAGGv91CXQ52LyHzrC4Z6aHLe', 
+        content: 'Qmb77FJbMMHJxqT6z5jX4NQ4qzWPmqTv3HB9MHz1eFSuH6'
+      };
+      creatorData.id = i;
+      creatorData.name = acnt;
+      if (img!='') { creatorData.picture = img;  }
+      if (content!='') { creatorData.content = content;  }
+      // console.log(creatorData);
+      App.allCreators.push(creatorData);
+    }
+
+    var creatorsRow = $('#creatorsRow');
+    var creatorTemplate = $('#creatorTemplate');
+
+    // Update all creators from contract
+    for (i = 0; i < numCreators; i++) {
+      // console.log(App.allCreators[i]);
+      creatorTemplate.find('.panel-title').text(App.allCreators[i].name.substring(0,6) + '....' + App.allCreators[i].name.substring(37,42));
+      creatorTemplate.find('img').attr('src', "https://gateway.ipfs.io/ipfs/" + App.allCreators[i].picture);
+      creatorTemplate.find('a').attr('href', "https://gateway.ipfs.io/ipfs/" + App.allCreators[i].content);
+      creatorTemplate.find('.btn-tip').attr('data-id', App.allCreators[i].id);
+      creatorTemplate.find('.btn-subscribe').attr('data-id', App.allCreators[i].id);
+      creatorsRow.prepend(creatorTemplate.html());
+    }
+    creatorTemplate.remove();
+
     return App.bindEvents();
   },
 
   bindEvents: function() {
-    $(document).on('click', '.btn-subscribe', App.newSubscription()); //$('.btn-subscribe').attr('data-id')));   // Send address of creator to function
-    $(document).on('click', '.btn-tip', App.tipCreator()); //$('.btn-tip').attr('data-id')));
-    // $(document).on('click', '.get-content', App.getContent());
+
+    $('.btn-subscribe').click(function() {
+      const id = $(this).attr('data-id')
+      const add = App.allCreators[id].name
+      App.newSubscription(add)
+    })
+
+    $('.btn-tip').click(function() {
+      const id = $(this).attr('data-id')
+      const add = App.allCreators[id].name
+      App.tipCreator(add)
+    })
+
+    console.log('Now registering user');
+    return App.registerUser();    
   },
 
-  newSubscription : async function () {
-    console.log('New subscription');
-    var ethreonInstance = await App.contracts.Ethreon.deployed();
-    var account = await web3.eth.getAccounts();
-    web3.eth.defaultAccount = account[0];
-    var tx = await web3.eth.sendTransaction({from:web3.eth.defaultAccount, 
-                                              to:"0x4a2afb0785B24E41E9CA71D29bb16C9f994EB4e9", 
-                                              value:'100000000000000000'})
-    var logs = await ethreonInstance.newSubscription('0x4a2afb0785B24E41E9CA71D29bb16C9f994EB4e9', {from:web3.eth.defaultAccount});
-    console.log(logs);
-    // });
-  },
-
-  getContent : async function(cid) {
-    console.log('Getting content');
-    var ethreonInstance = await App.contracts.Ethreon.deployed();
-    var account = await web3.eth.getAccounts();
-    web3.eth.defaultAccount = account[0];
-    var logs = await ethreonInstance.getContent(cid, {from:web3.eth.defaultAccount});
+  newSubscription : async function (addr) {
+    console.log('New subscription to ', addr);
+    // Subscribe with 0.1 ETH
+    var logs = await App.contract.newSubscription(addr, {from: App.defaultAccount, value:'100000000000000000'});
     console.log(logs);
   },
 
-  tipCreator : async function () {
-    var ethreonInstance;
-    App.contracts.Ethreon.deployed().then(async function(instance) {
-      ethreonInstance = instance;
-      var tx = await web3.eth.sendTransaction({from:web3.eth.defaultAccount, 
-                                                to:"0x4ef074aA456b23070631fCaB57c85Dd7B4b9424b", 
-                                                value:'10000000000000000'})
-      // web3.eth.sendTransaction({
-      //   from: web3.eth.defaultAccount,
-      //   to: '0x11f4d0A3c12e86B4b5F39B213F7E19D048276DAe',
-      //   value: '1000000000000000'
-      // })
-      // return ethreonInstance.tipCreator('0x62871dD3d970F4E0A51D310fd6166f9c6fAac93d', {from:web3.eth.defaultAccount});
-      return tx;
-    }).then(function(subs){
-      console.log(subs);
-    });
+  tipCreator : async function (addr) {
+    console.log('New tip to ', addr);
+    // Tip 0.01 ETH
+    App.web3.eth.sendTransaction({
+      from: App.defaultAccount,
+      to: addr,
+      value: '10000000000000000'
+    }).then(function (logs) {
+      console.log(logs)
+    })
+  },
+
+  registerUser: async function() {
+
+    const isOldPatron = await App.contract.isOldPatron({from: App.defaultAccount});
+    console.log('isOldPatron', isOldPatron);
+    if (isOldPatron == false) {
+      var receipt = await App.contract.newPatronSignup({from: App.defaultAccount})
+      console.log(receipt);
+      console.log(receipt.logs[0].event)
+    }
+    else {
+      console.log('Welcome Back Patron!')
+    }
+    
+    // Add notification for welcome back/ New user welcome!
   }
-
 };
 
 
 $(function() {
   $(window).load(function() {
-      App.initPage();
+      App.initWeb3();
   });
 });

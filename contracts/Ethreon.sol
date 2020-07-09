@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 pragma experimental ABIEncoderV2;
 
-import './SafeMath.sol';
+// import './SafeMath.sol';
 import './EthreonBase.sol';
 
 contract Ethreon is Patron, Creator {
@@ -28,16 +28,26 @@ contract Ethreon is Patron, Creator {
     // Event flagging addition of content by creator
     event ContentAdded();
 
+    function isSubscribedTo(address _creator) public view isPatronRegistered returns (bool) {
+        if (isCreatorSubscribed[msg.sender][_creator]) {
+            return true;
+        }
+        return false;
+    }
+
     // Function for patron to subscribe to new creator
-    function newSubscription(address _creator) public isPatronRegistered {
+    function newSubscription(address _creator) public isPatronRegistered payable {
         require(alreadyRegisteredCreator[_creator], "Not a registered creator!");
         if (isCreatorSubscribed[msg.sender][_creator]) {
+            msg.sender.transfer(msg.value);
             emit AlreadySubscribed();
         }
         else {
             Subscribers[_creator].push(msg.sender);             //SubscribersData(msg.sender, now + 30 days));
             Subscriptions[msg.sender].push(_creator);
             isCreatorSubscribed[msg.sender][_creator] = true;
+            address payable creator = address(uint160(_creator));
+            creator.transfer(msg.value);
             emit NewSubscription(_creator);
         }
     }
@@ -57,18 +67,18 @@ contract Ethreon is Patron, Creator {
     }
 
     // Function to return string of content hash to registered patron
-    function getContent(address _creator) public view isPatronRegistered returns (string memory ) {
+    function getCreatorData(address _creator) public view isPatronRegistered returns (string memory, string memory ) {
         require(alreadyRegisteredCreator[_creator], "Not a registered creator!");
         // require(Subscribers[_creator].isValue, "No subscribers of this creator yet!");
         address[] memory users = Subscribers[_creator];
         for (uint i = 0; i < users.length; i++) {
             if (users[i] == msg.sender) {
-                return CreatorData[_creator].contentHash;
+                return (CreatorData[_creator].imageHash, CreatorData[_creator].contentHash);
                 //if (users[i].endSubscription > now) {
                 //    return CreatorData[_creator].contentHash;
                 //}
             }
         }
-        return "";                // Should never reach here ideally
+        return ("", "");                // Should never reach here ideally
     }
 }

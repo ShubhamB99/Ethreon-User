@@ -23,7 +23,7 @@
   "dependencies": {
     "@openzeppelin/contract-loader": "^0.6.1",
     "@truffle/contract": "^4.2.9",
-    "@truffle/hdwallet-provider": "^1.0.35",
+    "@truffle/hdwallet-provider": "^1.7.0",
     "solc": "^0.6.10"
   }
 }
